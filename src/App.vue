@@ -155,7 +155,6 @@
     </main>
   </div>
 </template>
-
 <script setup>
 import { ref } from 'vue';
 
@@ -194,31 +193,29 @@ async function handleSubmit() {
   error.value = '';
 
   const formData = new FormData();
-  formData.append('question', input.value);
   
+  // --- CHANGE 1: Convert the input text to a file-like Blob ---
+  // The backend expects the question as a file, not a text field.
+  const questionBlob = new Blob([input.value], { type: 'text/plain' });
+  formData.append('question_file', questionBlob, 'question.txt');
+
+  // --- CHANGE 2: Use the key 'attachment' for the data file ---
+  // The backend expects the optional data file to have the key 'attachment'.
   if (attachment.value) {
-    formData.append('data_file', attachment.value);
+    formData.append('attachment', attachment.value);
   }
 
-  // MOCK API RESPONSE for demonstration
-  setTimeout(() => {
-    if (input.value.toLowerCase().includes("error")) {
-      error.value = `Failed to connect to the agent. The server returned a 500 Internal Server Error. Please check the backend logs.`;
-    } else {
-      response.value = `Based on the analysis of 'sales_q3_2025.csv', here are the key findings:\n\n1.  **Total Revenue**: $1,250,450.00\n2.  **Top Performing Region**: North America ($450,120.00)\n3.  **Best Selling Product**: 'Pro Widget' with 15,000 units sold.\n\nAn upward trend in sales was observed starting mid-August, correlating with our recent marketing campaign.`;
-    }
-    isLoading.value = false;
-  }, 2000);
-
-  // REAL API CALL
-
+  // API call logic remains the same, but now sends data in the correct format.
   try {
     const res = await fetch('https://data-analysis-agent-1lrc.onrender.com/api', {
       method: 'POST',
       body: formData,
     });
 
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
+    }
 
     const data = await res.json();
 
@@ -232,6 +229,5 @@ async function handleSubmit() {
   } finally {
     isLoading.value = false;
   }
-
 }
 </script>
